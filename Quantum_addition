@@ -1,0 +1,59 @@
+#This file is to add two numbers in a quantum computer/ simulator using QFT
+
+import numpy as np
+import qiskit
+from qiskit import QuantumCircuit, Aer, QuantumRegister, ClassicalRegister
+from qiskit.providers.aer import QasmSimulator
+from qiskit.visualization import plot_histogram
+from qiskit.circuit.library import QFT
+
+# Function to change decimal numbers to Binary numbers and to Qubit states
+
+def change2qubit(a,b):
+
+# Changing to Binary numbers
+
+    a_bin  = '{0:{fill}3b}'.format(a, fill = '0')
+    b_bin  = '{0:{fill}3b}'.format(b, fill = '0')
+    
+# Getting Qubits/ Bits (registers)
+
+    qa = QuantumRegister(3,'a')
+    qb = QuantumRegister(3,'b')
+    ca = ClassicalRegister(3,'c')
+    qc = QuantumCircuit(qa,qb,ca)
+
+# Flipping the state of qubits for '1'
+
+    for i in range(3):
+        if a_bin[i] == '1':
+            qc.x(qa[2-i])
+        if b_bin[i] == '1':
+            qc.x(qb[2-i])
+    return qc, qa, qb, ca
+    
+ # Function which adds/ rotates and retains teh answer in the first register
+ def add_rotations(qc, t_reg, c_reg, n):
+    for i in range(0, n+1):
+        qc.cp(np.pi/ 2**i, c_reg[n-i], t_reg[n])
+        
+a = 1
+b = 2
+n = 3
+qc, qa, qb, ca = change2qubit(a,b)
+
+qc.append(QFT(n,do_swaps = False),[0,1,2])
+
+for i in range(0, n):
+    add_rotations(qc, qa, qb, 2-i)
+
+qc.append(QFT(n,do_swaps = False).inverse(),[0,1,2])
+
+qc.measure(qa,ca)
+qc.draw('mpl')
+
+backend = Aer.get_backend('qasm_simulator')
+job = qiskit.execute(qc, backend, shots = 100)
+result = job.result()
+answer = result.get_counts()
+plot_histogram(answer)
